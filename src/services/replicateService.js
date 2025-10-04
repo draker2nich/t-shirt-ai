@@ -1,12 +1,12 @@
 /**
- * Service for working with Replicate API through backend proxy
+ * Сервис для работы с Replicate API через backend прокси
  */
 
 const PROXY_API_URL = process.env.REACT_APP_PROXY_URL || 'http://localhost:3001/api';
 const SDXL_MODEL_VERSION = '39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b';
 
 /**
- * Creates a prediction (starts image generation)
+ * Создает предсказание (запускает генерацию изображения)
  */
 export async function createPrediction(apiKey, prompt, seed = null) {
   const enhancedPrompt = enhancePromptForSeamless(prompt);
@@ -35,14 +35,14 @@ export async function createPrediction(apiKey, prompt, seed = null) {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || error.error || 'Failed to create prediction');
+    throw new Error(error.detail || error.error || 'Не удалось создать запрос');
   }
 
   return await response.json();
 }
 
 /**
- * Gets prediction status
+ * Получает статус предсказания
  */
 export async function getPrediction(apiKey, predictionId) {
   const response = await fetch(`${PROXY_API_URL}/predictions/${predictionId}`, {
@@ -53,14 +53,14 @@ export async function getPrediction(apiKey, predictionId) {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to get prediction status');
+    throw new Error(error.error || 'Не удалось получить статус');
   }
 
   return await response.json();
 }
 
 /**
- * Waits for prediction completion
+ * Ждет завершения предсказания с подробным отслеживанием прогресса
  */
 export async function waitForPrediction(apiKey, predictionId, onProgress = null) {
   let attempts = 0;
@@ -69,8 +69,26 @@ export async function waitForPrediction(apiKey, predictionId, onProgress = null)
   while (attempts < maxAttempts) {
     const prediction = await getPrediction(apiKey, predictionId);
     
+    // Определяем детальный статус
+    let detailedStatus = {
+      status: prediction.status,
+      stage: 'unknown',
+      message: ''
+    };
+
+    if (prediction.status === 'starting') {
+      detailedStatus.stage = 'starting';
+      detailedStatus.message = 'Инициализация...';
+    } else if (prediction.status === 'processing') {
+      detailedStatus.stage = 'generating';
+      detailedStatus.message = 'Генерация изображения...';
+    } else if (prediction.status === 'succeeded') {
+      detailedStatus.stage = 'loading';
+      detailedStatus.message = 'Загрузка изображения...';
+    }
+    
     if (onProgress) {
-      onProgress(prediction);
+      onProgress(detailedStatus);
     }
     
     if (prediction.status === 'succeeded') {
@@ -78,77 +96,144 @@ export async function waitForPrediction(apiKey, predictionId, onProgress = null)
     }
     
     if (prediction.status === 'failed') {
-      throw new Error(prediction.error || 'Generation failed');
+      throw new Error(prediction.error || 'Ошибка генерации');
     }
     
     if (prediction.status === 'canceled') {
-      throw new Error('Generation was canceled');
+      throw new Error('Генерация отменена');
     }
     
-    // Wait 1 second before next check
+    // Ждем 1 секунду перед следующей проверкой
     await new Promise(resolve => setTimeout(resolve, 1000));
     attempts++;
   }
   
-  throw new Error('Request timeout exceeded');
+  throw new Error('Превышено время ожидания');
 }
 
 /**
- * Optimized parallel generation of multiple design variants
- * Creates ALL requests in parallel, then waits for results
+ * Оптимизированная параллельная генерация нескольких вариантов дизайна
+ * Создает ВСЕ запросы параллельно, затем ждет результаты
  */
-export async function generateDesigns(apiKey, prompt, numberOfVariants = 4) {
-  console.log(`Starting parallel generation of ${numberOfVariants} variants...`);
+export async function generateDesigns(apiKey, prompt, numberOfVariants = 4, onProgressUpdate = null) {
+  console.log(`Запуск параллельной генерации ${numberOfVariants} вариантов...`);
   
-  // Create ALL predictions in parallel
-  const predictionPromises = Array.from({ length: numberOfVariants }, (_, i) => {
-    console.log(`Sending request ${i + 1}/${numberOfVariants}`);
-    return createPrediction(apiKey, prompt);
-  });
+  // Инициализация массива статусов для каждого изображения
+  const imageStatuses = Array.from({ length: numberOfVariants }, (_, i) => ({
+    index: i,
+    stage: 'creating',
+    message: 'Создание запроса...',
+    status: 'starting'
+  }));
   
-  // Wait for ALL predictions to be created
-  const predictions = await Promise.all(predictionPromises);
-  console.log(`All ${numberOfVariants} requests created, waiting for generation...`);
+  const updateProgress = () => {
+    if (onProgressUpdate) {
+      onProgressUpdate([...imageStatuses]);
+    }
+  };
   
-  // Now wait for ALL generations to complete in parallel
-  const results = await Promise.all(
-    predictions.map((pred, index) => {
-      console.log(`Waiting for result ${index + 1}/${numberOfVariants} (ID: ${pred.id})`);
-      return waitForPrediction(apiKey, pred.id, (status) => {
-        console.log(`Image ${index + 1}: status ${status.status}`);
-      });
-    })
-  );
-  
-  console.log(`All ${numberOfVariants} images ready!`);
-  
-  // Extract image URLs
-  return results
-    .filter(result => result.output && result.output[0])
-    .map((result, index) => ({
-      id: result.id,
-      url: result.output[0],
-      prompt: prompt,
-      seed: result.input?.seed,
-      index: index
-    }));
+  try {
+    // Создаем ВСЕ предсказания параллельно
+    updateProgress();
+    
+    const predictionPromises = Array.from({ length: numberOfVariants }, async (_, i) => {
+      console.log(`Отправка запроса ${i + 1}/${numberOfVariants}`);
+      imageStatuses[i] = {
+        index: i,
+        stage: 'creating',
+        message: 'Отправка запроса...',
+        status: 'starting'
+      };
+      updateProgress();
+      
+      try {
+        const prediction = await createPrediction(apiKey, prompt);
+        imageStatuses[i] = {
+          index: i,
+          stage: 'waiting',
+          message: 'Запрос создан, ожидание генерации...',
+          status: 'processing',
+          predictionId: prediction.id
+        };
+        updateProgress();
+        return prediction;
+      } catch (error) {
+        imageStatuses[i] = {
+          index: i,
+          stage: 'error',
+          message: `Ошибка: ${error.message}`,
+          status: 'failed'
+        };
+        updateProgress();
+        throw error;
+      }
+    });
+    
+    // Ждем создания ВСЕХ предсказаний
+    const predictions = await Promise.all(predictionPromises);
+    console.log(`Все ${numberOfVariants} запросы созданы, ожидание генерации...`);
+    
+    // Теперь ждем завершения ВСЕХ генераций параллельно
+    const results = await Promise.all(
+      predictions.map((pred, index) => {
+        console.log(`Ожидание результата ${index + 1}/${numberOfVariants} (ID: ${pred.id})`);
+        
+        return waitForPrediction(apiKey, pred.id, (detailedStatus) => {
+          imageStatuses[index] = {
+            index: index,
+            stage: detailedStatus.stage,
+            message: detailedStatus.message,
+            status: detailedStatus.status,
+            predictionId: pred.id
+          };
+          updateProgress();
+          console.log(`Изображение ${index + 1}: ${detailedStatus.message}`);
+        });
+      })
+    );
+    
+    console.log(`Все ${numberOfVariants} изображения готовы!`);
+    
+    // Обновляем статусы на "завершено"
+    imageStatuses.forEach((status, i) => {
+      imageStatuses[i] = {
+        ...status,
+        stage: 'completed',
+        message: 'Готово!',
+        status: 'succeeded'
+      };
+    });
+    updateProgress();
+    
+    // Извлекаем URL изображений
+    return results
+      .filter(result => result.output && result.output[0])
+      .map((result, index) => ({
+        id: result.id,
+        url: result.output[0],
+        prompt: prompt,
+        seed: result.input?.seed,
+        index: index
+      }));
+  } catch (error) {
+    console.error('Ошибка генерации:', error);
+    throw error;
+  }
 }
 
 /**
- * Enhances prompt for seamless pattern creation
+ * Улучшает промт для создания бесшовного паттерна
  */
 function enhancePromptForSeamless(prompt) {
   const seamlessKeywords = [
     'seamless pattern',
     'tileable',
     'repeating pattern',
-    'high quality',
-    'detailed',
-    'professional design for textile printing',
-    'vibrant colors'
+    'бесшовный',
+    'паттерн'
   ];
   
-  // Check if seamless keywords are already present
+  // Проверяем, есть ли уже ключевые слова для бесшовности
   const hasSeamless = seamlessKeywords.some(keyword => 
     prompt.toLowerCase().includes(keyword.toLowerCase())
   );
@@ -161,19 +246,19 @@ function enhancePromptForSeamless(prompt) {
 }
 
 /**
- * API key validation
+ * Валидация API ключа
  */
 export function validateApiKey(apiKey) {
   if (!apiKey || apiKey.trim() === '') {
-    return { valid: false, error: 'API key cannot be empty' };
+    return { valid: false, error: 'API ключ не может быть пустым' };
   }
   
   if (!apiKey.startsWith('r8_')) {
-    return { valid: false, error: 'API key must start with r8_' };
+    return { valid: false, error: 'API ключ должен начинаться с r8_' };
   }
   
   if (apiKey.length < 40) {
-    return { valid: false, error: 'API key is too short' };
+    return { valid: false, error: 'API ключ слишком короткий' };
   }
   
   return { valid: true };
