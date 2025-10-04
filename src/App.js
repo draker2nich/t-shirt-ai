@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shirt, Sparkles } from './components/Icons';
+import { Shirt, Sparkles, Settings, X } from './components/Icons';
 import ApiKeyInput from './components/ApiKeyInput';
 import PromptInput from './components/PromptInput';
 import SettingsPanel from './components/SettingsPanel';
@@ -25,15 +25,18 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Загрузка API ключа
+  // Load API key from localStorage
   useEffect(() => {
     const savedApiKey = localStorage.getItem('replicate_api_key');
     if (savedApiKey) {
       setApiKey(savedApiKey);
+    } else {
+      // Show settings modal if no API key
+      setShowSettings(true);
     }
   }, []);
 
-  // Сохранение API ключа
+  // Save API key to localStorage
   const handleApiKeyChange = (newApiKey) => {
     setApiKey(newApiKey);
     setApiKeyError('');
@@ -45,11 +48,12 @@ function App() {
     }
   };
 
-  // Генерация дизайнов
+  // Generate designs
   const handleGenerate = async () => {
     const validation = validateApiKey(apiKey);
     if (!validation.valid) {
       setApiKeyError(validation.error);
+      setShowSettings(true);
       return;
     }
 
@@ -65,7 +69,7 @@ function App() {
     setProgress(0);
 
     try {
-      // Симуляция прогресса
+      // Progress simulation
       const progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 90) return prev;
@@ -96,7 +100,7 @@ function App() {
     }
   };
 
-  // Скачивание изображения
+  // Download image
   const handleDownload = async () => {
     if (!selectedDesign) return;
 
@@ -117,48 +121,33 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-indigo-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Shirt className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Shirt className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">AI Design Studio</h1>
-                <p className="text-xs text-gray-500">Generate textile patterns with AI</p>
+                <h1 className="text-xl font-bold text-gray-900">AI Design Studio</h1>
+                <p className="text-xs text-gray-500">Create stunning textile patterns with AI</p>
               </div>
             </div>
             
             <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              {showSettings ? 'Hide' : 'Settings'}
+              <Settings className="w-4 h-4" />
+              Settings
             </button>
           </div>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Settings Panel (Collapsible) */}
-        {showSettings && (
-          <div className="mb-6 space-y-4">
-            <ApiKeyInput
-              apiKey={apiKey}
-              onApiKeyChange={handleApiKeyChange}
-              error={apiKeyError}
-            />
-            <SettingsPanel
-              settings={settings}
-              onSettingsChange={setSettings}
-              disabled={isGenerating}
-            />
-          </div>
-        )}
-
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: Input */}
@@ -176,21 +165,25 @@ function App() {
           <div className="space-y-6">
             {/* Error */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>{error}</span>
               </div>
             )}
 
             {/* Loading */}
             {isGenerating && (
-              <div className="bg-white rounded-lg shadow-sm p-8 text-center border border-gray-200">
+              <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
                 <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Generating designs...</p>
+                <p className="text-sm font-medium text-gray-900 mb-2">Generating designs...</p>
+                <p className="text-xs text-gray-500">This typically takes 20-30 seconds</p>
                 {progress > 0 && (
                   <div className="mt-4">
                     <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                       <div 
-                        className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 transition-all duration-300"
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2 transition-all duration-300"
                         style={{ width: `${progress}%` }}
                       ></div>
                     </div>
@@ -221,15 +214,62 @@ function App() {
 
             {/* Empty State */}
             {!isGenerating && generatedDesigns.length === 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-12 text-center border border-gray-200">
+              <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
                 <Sparkles className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 mb-2">No designs yet</p>
-                <p className="text-sm text-gray-400">Enter a prompt to generate</p>
+                <p className="text-gray-900 font-medium mb-1">No designs yet</p>
+                <p className="text-sm text-gray-500">Enter a prompt and click "Generate Design" to start</p>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Settings</h2>
+                  <p className="text-xs text-gray-500">Configure API key and generation options</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <ApiKeyInput
+                apiKey={apiKey}
+                onApiKeyChange={handleApiKeyChange}
+                error={apiKeyError}
+              />
+              <SettingsPanel
+                settings={settings}
+                onSettingsChange={setSettings}
+                disabled={isGenerating}
+              />
+              
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="px-6 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

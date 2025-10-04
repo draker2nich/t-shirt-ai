@@ -1,70 +1,185 @@
-# Getting Started with Create React App
+# AI T-Shirt Designer
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern web application for generating AI-powered textile patterns and designs using Stable Diffusion through the Replicate API.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **AI-Powered Design Generation**: Create unique textile patterns using text descriptions
+- **Parallel Processing**: Generate multiple design variants simultaneously
+- **Real-time Preview**: See your designs on a t-shirt mockup instantly
+- **Seamless Patterns**: Optimized for textile printing with tileable patterns
+- **Modern UI**: Clean, intuitive interface built with React and Tailwind CSS
 
-### `npm start`
+## Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- Node.js (v14 or higher)
+- npm or yarn
+- Replicate API key ([Get one here](https://replicate.com/account/api-tokens))
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Installation
 
-### `npm test`
+1. **Clone the repository** (or extract the archive)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. **Run the cleanup script** (Windows):
+   ```bash
+   cleanup.bat
+   ```
+   This removes duplicate and unused files from the project.
 
-### `npm run build`
+3. **Install dependencies**:
+   
+   Backend:
+   ```bash
+   cd server
+   npm install
+   ```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+   Frontend:
+   ```bash
+   cd ..
+   npm install
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Configuration
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. **API Key Setup**:
+   - Get your Replicate API key from https://replicate.com/account/api-tokens
+   - On first run, the app will prompt you to enter your API key
+   - The key is stored locally in your browser (localStorage)
 
-### `npm run eject`
+2. **Environment Variables** (optional):
+   - Copy `.env` to create custom configuration
+   - Modify `REACT_APP_PROXY_URL` if needed (default: http://localhost:3001/api)
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Running the Application
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Option 1: Using the start script (Windows)
+```bash
+start.bat
+```
+This will automatically start both backend and frontend servers.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Option 2: Manual start
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Start the backend server:
+```bash
+cd server
+npm start
+```
 
-## Learn More
+In a new terminal, start the frontend:
+```bash
+npm start
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:3001
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Usage
 
-### Code Splitting
+1. **Configure API Key**:
+   - Click the "Settings" button in the header
+   - Enter your Replicate API key
+   - The key will be saved for future sessions
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+2. **Generate Designs**:
+   - Enter a description of your desired pattern
+   - Optionally adjust generation settings (pattern type, style, variants)
+   - Click "Generate Design"
+   - Wait 20-30 seconds for parallel generation
 
-### Analyzing the Bundle Size
+3. **Preview & Download**:
+   - Select any generated design from the gallery
+   - View it on a t-shirt mockup
+   - Switch between front/back views
+   - Download your favorite design
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Generation Settings
 
-### Making a Progressive Web App
+- **Pattern Type**: Seamless, Full Composition, or Geometric
+- **Art Style**: Realistic, Abstract, Minimalist, Vintage, etc.
+- **Variants**: Generate 2-6 variations per request
+- **Detail Level**: Low (faster), Medium, or High (slower)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Project Structure
 
-### Advanced Configuration
+```
+ai-tshirt-designer/
+├── public/             # Static files
+├── server/            # Backend proxy server
+│   ├── server.js      # Express server
+│   └── package.json   # Backend dependencies
+├── src/
+│   ├── components/    # React components
+│   │   ├── ApiKeyInput.js
+│   │   ├── DesignGallery.js
+│   │   ├── Icons.js
+│   │   ├── PromptInput.js
+│   │   ├── SettingsPanel.js
+│   │   └── TShirtPreview.js
+│   ├── services/      # API services
+│   │   └── replicateService.js
+│   ├── App.js         # Main application
+│   ├── index.js       # Entry point
+│   └── index.css      # Global styles
+├── .env               # Environment variables
+├── cleanup.bat        # Cleanup script
+├── start.bat          # Start script
+└── package.json       # Frontend dependencies
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Technology Stack
 
-### Deployment
+- **Frontend**: React 18, Tailwind CSS
+- **Backend**: Express.js, Node.js
+- **AI**: Replicate API (Stable Diffusion XL)
+- **Build Tool**: Create React App
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## Performance Optimization
 
-### `npm run build` fails to minify
+- Parallel generation of multiple variants
+- Optimized API calls with proper error handling
+- Efficient image loading and caching
+- Responsive design for all screen sizes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Troubleshooting
+
+**Port already in use:**
+- Change ports in `.env` and `server/server.js`
+
+**API key errors:**
+- Verify your key starts with `r8_`
+- Check that your Replicate account has credits
+- Ensure the key is correctly entered in settings
+
+**Generation fails:**
+- Check your internet connection
+- Verify backend server is running
+- Check browser console for detailed errors
+
+**Slow generation:**
+- Reduce number of variants
+- Lower detail level in settings
+- Check Replicate service status
+
+## Cost Information
+
+- Generation typically costs $0.005-0.01 per image
+- Replicate offers $10 in free credits for new accounts
+- Monitor usage at https://replicate.com/account/billing
+
+## License
+
+MIT
+
+## Support
+
+For issues and questions:
+1. Check the troubleshooting section
+2. Review console logs for detailed errors
+3. Verify all dependencies are installed correctly
+
+---
+
+**Note**: This application requires an active internet connection and a valid Replicate API key to function.

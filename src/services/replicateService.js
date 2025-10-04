@@ -1,13 +1,12 @@
 /**
- * Сервис для работы с Replicate API через backend прокси
+ * Service for working with Replicate API through backend proxy
  */
 
-// URL вашего backend прокси-сервера
 const PROXY_API_URL = process.env.REACT_APP_PROXY_URL || 'http://localhost:3001/api';
 const SDXL_MODEL_VERSION = '39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b';
 
 /**
- * Создает предсказание (запускает генерацию изображения)
+ * Creates a prediction (starts image generation)
  */
 export async function createPrediction(apiKey, prompt, seed = null) {
   const enhancedPrompt = enhancePromptForSeamless(prompt);
@@ -27,7 +26,7 @@ export async function createPrediction(apiKey, prompt, seed = null) {
         height: 1024,
         num_outputs: 1,
         scheduler: "K_EULER",
-        num_inference_steps: 25, // ⚡ Уменьшил с 30 до 25 для ускорения
+        num_inference_steps: 25,
         guidance_scale: 7.5,
         seed: seed || Math.floor(Math.random() * 1000000)
       }
@@ -36,14 +35,14 @@ export async function createPrediction(apiKey, prompt, seed = null) {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.detail || error.error || 'Ошибка создания предсказания');
+    throw new Error(error.detail || error.error || 'Failed to create prediction');
   }
 
   return await response.json();
 }
 
 /**
- * Получает статус предсказания
+ * Gets prediction status
  */
 export async function getPrediction(apiKey, predictionId) {
   const response = await fetch(`${PROXY_API_URL}/predictions/${predictionId}`, {
@@ -54,18 +53,18 @@ export async function getPrediction(apiKey, predictionId) {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Ошибка получения статуса');
+    throw new Error(error.error || 'Failed to get prediction status');
   }
 
   return await response.json();
 }
 
 /**
- * Ждет завершения предсказания
+ * Waits for prediction completion
  */
 export async function waitForPrediction(apiKey, predictionId, onProgress = null) {
   let attempts = 0;
-  const maxAttempts = 90; // Увеличил до 90 секунд на всякий случай
+  const maxAttempts = 90;
   
   while (attempts < maxAttempts) {
     const prediction = await getPrediction(apiKey, predictionId);
@@ -79,51 +78,51 @@ export async function waitForPrediction(apiKey, predictionId, onProgress = null)
     }
     
     if (prediction.status === 'failed') {
-      throw new Error(prediction.error || 'Генерация не удалась');
+      throw new Error(prediction.error || 'Generation failed');
     }
     
     if (prediction.status === 'canceled') {
-      throw new Error('Генерация была отменена');
+      throw new Error('Generation was canceled');
     }
     
-    // Ждем 1 секунду перед следующей проверкой
+    // Wait 1 second before next check
     await new Promise(resolve => setTimeout(resolve, 1000));
     attempts++;
   }
   
-  throw new Error('Превышено время ожидания');
+  throw new Error('Request timeout exceeded');
 }
 
 /**
- * ⚡ ОПТИМИЗИРОВАННАЯ генерация нескольких вариантов дизайна
- * Создаёт ВСЕ запросы параллельно, затем ждёт результаты
+ * Optimized parallel generation of multiple design variants
+ * Creates ALL requests in parallel, then waits for results
  */
 export async function generateDesigns(apiKey, prompt, numberOfVariants = 4) {
-  console.log(`🚀 Запуск параллельной генерации ${numberOfVariants} вариантов...`);
+  console.log(`Starting parallel generation of ${numberOfVariants} variants...`);
   
-  // ⚡ ПАРАЛЛЕЛЬНО создаём ВСЕ предсказания СРАЗУ
+  // Create ALL predictions in parallel
   const predictionPromises = Array.from({ length: numberOfVariants }, (_, i) => {
-    console.log(`📤 Отправка запроса ${i + 1}/${numberOfVariants}`);
+    console.log(`Sending request ${i + 1}/${numberOfVariants}`);
     return createPrediction(apiKey, prompt);
   });
   
-  // Ждём создания ВСЕХ предсказаний
+  // Wait for ALL predictions to be created
   const predictions = await Promise.all(predictionPromises);
-  console.log(`✅ Все ${numberOfVariants} запроса созданы, ожидание генерации...`);
+  console.log(`All ${numberOfVariants} requests created, waiting for generation...`);
   
-  // Теперь параллельно ждём завершения ВСЕХ генераций
+  // Now wait for ALL generations to complete in parallel
   const results = await Promise.all(
     predictions.map((pred, index) => {
-      console.log(`⏳ Ожидание результата ${index + 1}/${numberOfVariants} (ID: ${pred.id})`);
+      console.log(`Waiting for result ${index + 1}/${numberOfVariants} (ID: ${pred.id})`);
       return waitForPrediction(apiKey, pred.id, (status) => {
-        console.log(`📊 Изображение ${index + 1}: статус ${status.status}`);
+        console.log(`Image ${index + 1}: status ${status.status}`);
       });
     })
   );
   
-  console.log(`🎉 Все ${numberOfVariants} изображения готовы!`);
+  console.log(`All ${numberOfVariants} images ready!`);
   
-  // Извлекаем URL изображений
+  // Extract image URLs
   return results
     .filter(result => result.output && result.output[0])
     .map((result, index) => ({
@@ -136,7 +135,7 @@ export async function generateDesigns(apiKey, prompt, numberOfVariants = 4) {
 }
 
 /**
- * Улучшает промт для создания бесшовных паттернов
+ * Enhances prompt for seamless pattern creation
  */
 function enhancePromptForSeamless(prompt) {
   const seamlessKeywords = [
@@ -149,7 +148,7 @@ function enhancePromptForSeamless(prompt) {
     'vibrant colors'
   ];
   
-  // Проверяем, есть ли уже ключевые слова
+  // Check if seamless keywords are already present
   const hasSeamless = seamlessKeywords.some(keyword => 
     prompt.toLowerCase().includes(keyword.toLowerCase())
   );
@@ -162,19 +161,19 @@ function enhancePromptForSeamless(prompt) {
 }
 
 /**
- * Валидация API ключа
+ * API key validation
  */
 export function validateApiKey(apiKey) {
   if (!apiKey || apiKey.trim() === '') {
-    return { valid: false, error: 'API ключ не может быть пустым' };
+    return { valid: false, error: 'API key cannot be empty' };
   }
   
   if (!apiKey.startsWith('r8_')) {
-    return { valid: false, error: 'API ключ должен начинаться с r8_' };
+    return { valid: false, error: 'API key must start with r8_' };
   }
   
   if (apiKey.length < 40) {
-    return { valid: false, error: 'API ключ слишком короткий' };
+    return { valid: false, error: 'API key is too short' };
   }
   
   return { valid: true };
